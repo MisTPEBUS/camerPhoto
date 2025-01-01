@@ -9,7 +9,8 @@
 </head>
 
 <body class="bg-gray-100 flex justify-center items-center h-screen">
-    <div class="flex w-[1296px] h-[720px] shadow-lg bg-white rounded-lg overflow-hidden">
+    <div class="flex w-[1296px] shadow-lg bg-white rounded-lg overflow-hidden flex-wrap">
+
         <!-- 左側：攝影機畫面 -->
         <div class="w-2/3 bg-gray-800 flex justify-center items-center">
             <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
@@ -57,27 +58,29 @@
                 拍照
             </button>
         </div>
+
+        <!-- LOG 區域 -->
+        <div class="w-full">
+            <textarea id="log" readonly class="w-full h-[120px] border border-gray-300 p-2 mt-4"
+                placeholder="日誌記錄將顯示在這裡..."></textarea>
+        </div>
     </div>
 
     <script>
         const video = document.getElementById('video');
-        let selectedAction = ''; // 用於儲存當前按鈕狀態
-        const previewCanvas = document.createElement('canvas'); // 用於拍照
+        const employeeIdInput = document.getElementById('employeeId');
+        const logTextarea = document.getElementById('log');
+        let selectedAction = null; // 記錄當前選擇的按鈕動作
 
         // 啟動攝影機
         async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
         }
 
-        // 設定當前按鈕狀態
+        // 設定按鈕狀態
         function setButtonStatus(action) {
-            selectedAction = action;
-            // 可加入 UI 樣式更新，例如高亮顯示選中的按鈕
+            selectedAction = action; // 記錄選擇的動作
             document.querySelectorAll('button[id]').forEach((btn) => {
                 if (btn.id === action) {
                     btn.classList.add('bg-blue-700', 'text-white');
@@ -91,52 +94,58 @@
 
         // 拍照並上傳
         async function captureAndUpload() {
-            const employeeId = document.getElementById('employeeId').value.trim();
+            const employeeId = employeeIdInput.value.trim();
             if (!employeeId) {
                 alert('請輸入員工編號！');
                 return;
             }
             if (!selectedAction) {
-                alert('請選擇操作按鈕！');
+                alert('請選擇一個操作（簽到、簽退、公出、公入）！');
                 return;
             }
 
-            // 1) 拍照
-            const canvas = previewCanvas;
-            const context = canvas.getContext('2d');
+            // 拍照
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 2) 將畫面轉為 Base64
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const imageData = canvas.toDataURL('image/jpeg'); // 照片為 JPEG
 
-            // 3) 上傳至後端
-            try {
-                const res = await fetch('/api/upload-photo', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        employeeId,
-                        action: selectedAction,
-                        imageData: dataUrl,
-                    }),
-                });
-
-                const result = await res.json();
-                if (result.success) {
-                    alert('照片已上傳成功！檔案位置：' + result.filePath);
-                } else {
-                    alert('上傳失敗：' + result.error);
-                }
-            } catch (err) {
-                console.error('Upload failed:', err);
-                alert('上傳失敗，請檢查控制台錯誤訊息。');
+            // 上傳
+            const res = await fetch('/api/upload-photo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    imageData,
+                    employeeId,
+                    btn: selectedAction,
+                }),
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert('上傳成功！');
+                updateLog();
+            } else {
+                alert('上傳失敗：' + result.error);
             }
         }
 
-        // 啟動攝影機
-        window.addEventListener('load', startCamera);
+        // 更新 LOG
+        async function updateLog() {
+            const res = await fetch('/api/get-log');
+            const result = await res.json();
+            if (result.success) {
+                logTextarea.value = result.log;
+            }
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            startCamera();
+            updateLog();
+        });
     </script>
 </body>
 
