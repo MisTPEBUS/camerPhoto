@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Camera Photo Upload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 flex justify-center items-center h-screen">
+    <div class="flex w-[1296px] h-[720px] shadow-lg bg-white rounded-lg overflow-hidden">
+        <!-- 左側：攝影機畫面 -->
+        <div class="w-2/3 bg-gray-800 flex justify-center items-center">
+            <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+        </div>
+
+        <!-- 右側：輸入框與按鈕 -->
+        <div class="w-1/3 bg-gray-100 p-6 flex flex-col justify-between">
+            <!-- 輸入框區域 -->
+            <div>
+                <label for="employeeId" class="block text-lg font-medium text-gray-700 mb-2">
+                    請輸入員工編號
+                </label>
+                <input type="text" id="employeeId" placeholder="員工編號"
+                    class="w-full border border-gray-300 rounded-md shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <!-- 按鈕區域 -->
+            <div class="space-y-4">
+                <button id="Login"
+                    class="block w-full bg-blue-500 text-white font-semibold py-3 rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onclick="setButtonStatus('Login')">
+                    簽到
+                </button>
+                <button id="Logout"
+                    class="block w-full bg-blue-500 text-white font-semibold py-3 rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onclick="setButtonStatus('Logout')">
+                    簽退
+                </button>
+                <button id="Goout"
+                    class="block w-full bg-blue-500 text-white font-semibold py-3 rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onclick="setButtonStatus('Goout')">
+                    公出
+                </button>
+                <button id="Goin"
+                    class="block w-full bg-blue-500 text-white font-semibold py-3 rounded-md hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onclick="setButtonStatus('Goin')">
+                    公入
+                </button>
+            </div>
+
+            <!-- 拍照按鈕 -->
+            <button id="capture"
+                class="block w-full bg-red-500 text-white font-semibold py-3 rounded-md hover:bg-red-600 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                onclick="captureAndUpload()">
+                拍照
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        let selectedAction = ''; // 用於儲存當前按鈕狀態
+        const previewCanvas = document.createElement('canvas'); // 用於拍照
+
+        // 啟動攝影機
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+            }
+        }
+
+        // 設定當前按鈕狀態
+        function setButtonStatus(action) {
+            selectedAction = action;
+            // 可加入 UI 樣式更新，例如高亮顯示選中的按鈕
+            document.querySelectorAll('button[id]').forEach((btn) => {
+                if (btn.id === action) {
+                    btn.classList.add('bg-blue-700', 'text-white');
+                    btn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                } else {
+                    btn.classList.remove('bg-blue-700', 'text-white');
+                    btn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                }
+            });
+        }
+
+        // 拍照並上傳
+        async function captureAndUpload() {
+            const employeeId = document.getElementById('employeeId').value.trim();
+            if (!employeeId) {
+                alert('請輸入員工編號！');
+                return;
+            }
+            if (!selectedAction) {
+                alert('請選擇操作按鈕！');
+                return;
+            }
+
+            // 1) 拍照
+            const canvas = previewCanvas;
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 2) 將畫面轉為 Base64
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+            // 3) 上傳至後端
+            try {
+                const res = await fetch('/api/upload-photo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId,
+                        action: selectedAction,
+                        imageData: dataUrl,
+                    }),
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    alert('照片已上傳成功！檔案位置：' + result.filePath);
+                } else {
+                    alert('上傳失敗：' + result.error);
+                }
+            } catch (err) {
+                console.error('Upload failed:', err);
+                alert('上傳失敗，請檢查控制台錯誤訊息。');
+            }
+        }
+
+        // 啟動攝影機
+        window.addEventListener('load', startCamera);
+    </script>
+</body>
+
+</html>
