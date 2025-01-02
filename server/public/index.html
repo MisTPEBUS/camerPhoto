@@ -23,7 +23,7 @@
                 <label for="employeeId" class="block text-lg font-medium text-gray-700 mb-2">
                     請輸入員工編號
                 </label>
-                <input type="text" id="employeeId" placeholder="員工編號"
+                <input type="number" id="employeeId" placeholder="員工編號"
                     class="w-full border border-gray-300 rounded-md shadow-sm p-3 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
@@ -142,8 +142,12 @@
         async function updateLog() {
             const res = await fetch('/api/get-log');
             const result = await res.json();
+
             if (result.success) {
                 logTextarea.value = result.log;
+
+                // 自動滾動到日誌底部
+                logTextarea.scrollTop = logTextarea.scrollHeight;
             }
         }
 
