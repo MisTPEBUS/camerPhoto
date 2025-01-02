@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // 載入 .env 檔案
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,9 +11,9 @@ app.use(express.json({ limit: '10mb' }));
 
 // 提供靜態檔案
 app.use(express.static(path.join(__dirname, 'public')));
-
+console.log('process.env.UPLOAD_FOLDER', process.env.UPLOAD_FOLDER);
 // 確保必要資料夾存在
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_FOLDER || path.join(__dirname, 'uploads');
 const LOG_DIR = path.join(__dirname, 'logs');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR);
